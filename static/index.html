@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Missile Interceptor 3D</title>
+<link rel="stylesheet" href="/static/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<header id="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-text">
+      <div class="brand-title">INTERCEPTOR.OPS</div>
+      <div class="brand-sub">RL guidance demo &middot; three.js</div>
+    </div>
+  </div>
+  <div id="status-line">
+    <span class="status-pill" id="status-outcome">IDLE</span>
+    <span class="status-pill" id="status-time">t = 0.00s</span>
+    <span class="status-pill" id="status-distance">d = -</span>
+    <span class="status-pill" id="status-min">min = -</span>
+  </div>
+</header>
+
+<aside id="panel">
+  <h2>Mission Setup</h2>
+
+  <div class="group">
+    <h3>Threat missile</h3>
+    <div class="row">
+      <label>Azimuth (deg)</label>
+      <input type="range" id="azimuth" min="-180" max="180" value="30" step="1" />
+      <span class="val" id="azimuth-val">30</span>
+    </div>
+    <div class="row">
+      <label>Elevation (deg)</label>
+      <input type="range" id="elevation" min="15" max="85" value="50" step="1" />
+      <span class="val" id="elevation-val">50</span>
+    </div>
+    <div class="row">
+      <label>Cruise speed (m/s)</label>
+      <input type="range" id="thrust" min="100" max="600" value="220" step="5" />
+      <span class="val" id="thrust-val">220</span>
+    </div>
+    <div class="subrow">
+      <div class="vec-input">
+        <span class="vec-label">Target</span>
+        <input type="number" id="target-x" value="1100" step="50" />
+        <input type="number" id="target-y" value="400" step="50" />
+      </div>
+      <button id="random-target" class="ghost-btn" title="Randomize target">RND</button>
+    </div>
+    <div class="hint">Tip: click on the ground in the 3D view to drop the target there.</div>
+  </div>
+
+  <div class="group">
+    <h3>Environment</h3>
+    <div class="row">
+      <label>Wind multiplier</label>
+      <input type="range" id="wind" min="0" max="3" value="1" step="0.1" />
+      <span class="val" id="wind-val">1.0</span>
+    </div>
+    <div class="row">
+      <label>Jitter multiplier</label>
+      <input type="range" id="jitter" min="0" max="3" value="1" step="0.1" />
+      <span class="val" id="jitter-val">1.0</span>
+    </div>
+    <div class="row">
+      <label>Noise seed</label>
+      <input type="number" id="seed" value="7" min="0" max="999999" />
+      <button id="random-seed" class="ghost-btn">RND</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>Interceptor</h3>
+    <div class="row toggle-row">
+      <label>Pilot</label>
+      <select id="policy-mode">
+        <option value="ensemble" selected>Trained agent (ensemble)</option>
+        <option value="policy">Trained policy only</option>
+        <option value="xgboost">XGBoost teacher</option>
+        <option value="expert">Analytical PN guidance</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Launch delay (s)</label>
+      <input type="range" id="delay" min="0" max="5" value="1" step="0.1" />
+      <span class="val" id="delay-val">1.0</span>
+    </div>
+    <div class="row">
+      <label>Battery radius (m)</label>
+      <input type="range" id="standoff" min="120" max="800" value="320" step="10" />
+      <span class="val" id="standoff-val">320</span>
+    </div>
+    <div class="row">
+      <label>Initial speed (m/s)</label>
+      <input type="range" id="int-speed" min="0" max="320" value="160" step="5" />
+      <span class="val" id="int-speed-val">160</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>View</h3>
+    <div class="row toggle-row">
+      <label>Camera</label>
+      <select id="camera-mode">
+        <option value="orbit">Orbit (free)</option>
+        <option value="cinematic">Cinematic chase</option>
+        <option value="missile">Missile follow</option>
+        <option value="interceptor">Interceptor follow</option>
+      </select>
+    </div>
+    <div class="row toggle-row">
+      <label>Speed</label>
+      <select id="play-speed">
+        <option value="0.25">0.25x</option>
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1.0x</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+      </select>
+    </div>
+    <div class="row toggle-row">
+      <label>Wind field</label>
+      <input type="checkbox" id="show-wind" checked />
+    </div>
+    <div class="row toggle-row">
+      <label>Trajectories</label>
+      <input type="checkbox" id="show-trails" checked />
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="launch-btn" class="primary-btn">LAUNCH</button>
+    <button id="reset-btn" class="ghost-btn">RESET</button>
+  </div>
+
+  <div id="result-card">
+    <div class="result-header">
+      <span id="result-title">Awaiting launch</span>
+      <span id="result-badge" class="badge">--</span>
+    </div>
+    <div class="result-grid">
+      <div><span>Min distance</span><b id="result-min">-</b></div>
+      <div><span>Intercept t</span><b id="result-time">-</b></div>
+      <div><span>Frames</span><b id="result-frames">-</b></div>
+      <div><span>Outcome</span><b id="result-outcome">-</b></div>
+    </div>
+  </div>
+</aside>
+
+<footer id="bottom-controls">
+  <button class="control-btn" id="play-btn" title="Play / pause">&#9658;</button>
+  <input type="range" id="timeline" min="0" max="100" value="0" step="0.1" />
+  <span id="timeline-label">0.00 / 0.00 s</span>
+</footer>
+
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">SIMULATING...</div>
+</div>
+
+<div id="legend">
+  <div><span class="dot dot-missile"></span> Threat missile</div>
+  <div><span class="dot dot-interceptor"></span> Interceptor (RL)</div>
+  <div><span class="dot dot-target"></span> Target</div>
+  <div><span class="dot dot-wind"></span> Wind field</div>
+  <div><span class="dot dot-path"></span> Planned missile path</div>
+</div>
+
+<script type="module" src="/static/main.js"></script>
+</body>
+</html>
