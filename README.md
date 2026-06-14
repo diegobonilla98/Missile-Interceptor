@@ -2,6 +2,8 @@
 
 Simulation project for testing an interceptor guidance policy against procedurally generated missile trajectories in a 3D Three.js demo.
 
+![](./app_screenshot.png)
+
 The recommended model is the trained ensemble used by the HTML demo. It blends the PPO neural policy with the XGBoost guidance teacher:
 
 - PPO checkpoint: `https://huggingface.co/Boni98/MissileInterceptor/blob/main/best.pt`

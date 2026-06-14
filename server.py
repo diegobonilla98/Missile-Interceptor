@@ -18,7 +18,7 @@ checkpoint_model_path = None
 xgboost_model_path = None
 device_name = "cuda" if torch.cuda.is_available() else "cpu"
 host = "127.0.0.1"
-port = 8765
+port = 8766
 static_directory = Path("static")
 
 
